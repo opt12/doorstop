@@ -42,7 +42,13 @@
                     </ul>
                   % end
                 % end
-                <li><a class="dropdown-item" href="#{{item['uid']}}">{{item['text']}}</a></li>
+                <li>
+                  <a class="dropdown-item text-truncate"
+                    href="#{{item['uid']}}"
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="left"
+                    title="{{item['uid']}}">{{item['text']}}</a>
+                </li>
                 % old_depth = item['depth']
               % end
               % for _ in range(old_depth):
