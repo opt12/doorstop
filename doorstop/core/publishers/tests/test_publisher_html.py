@@ -315,7 +315,11 @@ class TestTableOfContents(unittest.TestCase):
         """Verify the table of contents is generated with heading levels"""
         expected = [
             {"depth": 0, "text": "Table of Contents", "uid": "toc"},
-            {"depth": 3, "text": "1.2.3 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod (REQ001)", "uid": ""},
+            {
+                "depth": 3,
+                "text": "1.2.3 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod (REQ001)",
+                "uid": "",
+            },
             {"depth": 2, "text": "1.4 Unicode: -40° ±1% (REQ003)", "uid": ""},
             {"depth": 2, "text": "1.5 Hello, world! (REQ006)", "uid": ""},
             {"depth": 2, "text": "1.6 Hello, world! (REQ004)", "uid": ""},
@@ -325,13 +329,17 @@ class TestTableOfContents(unittest.TestCase):
         html_publisher = publisher.check(".html", self.document)
         toc = html_publisher.table_of_contents(linkify=None, obj=self.document)
         self.assertEqual(expected, toc)
-        
+
     @patch("doorstop.settings.PUBLISH_HEADING_LEVELS", False)
     def test_toc_no_links(self):
         """Verify the table of contents is generated without heading levels"""
         expected = [
             {"depth": 0, "text": "Table of Contents", "uid": "toc"},
-            {"depth": 3, "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod (REQ001)", "uid": ""},
+            {
+                "depth": 3,
+                "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod (REQ001)",
+                "uid": "",
+            },
             {"depth": 2, "text": "Unicode: -40° ±1% (REQ003)", "uid": ""},
             {"depth": 2, "text": "Hello, world! (REQ006)", "uid": ""},
             {"depth": 2, "text": "Hello, world! (REQ004)", "uid": ""},
@@ -342,17 +350,29 @@ class TestTableOfContents(unittest.TestCase):
         html_publisher = publisher.check(".html", self.document)
         toc = html_publisher.table_of_contents(linkify=None, obj=self.document)
         self.assertEqual(expected, toc)
-        
+
     def test_toc(self):
         """Verify the table of contents is generated with an ID for the heading"""
         expected = [
             {"depth": 0, "text": "Table of Contents", "uid": "toc"},
-            {"depth": 3, "text": "1.2.3 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod (REQ001)", "uid": UID("REQ001")},
-            {"depth": 2, "text": "1.4 Unicode: -40° ±1% (REQ003)", "uid": UID("REQ003")},
+            {
+                "depth": 3,
+                "text": "1.2.3 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod (REQ001)",
+                "uid": UID("REQ001"),
+            },
+            {
+                "depth": 2,
+                "text": "1.4 Unicode: -40° ±1% (REQ003)",
+                "uid": UID("REQ003"),
+            },
             {"depth": 2, "text": "1.5 Hello, world! (REQ006)", "uid": UID("REQ006")},
             {"depth": 2, "text": "1.6 Hello, world! (REQ004)", "uid": UID("REQ004")},
             {"depth": 2, "text": "2.1 Plantuml (REQ002)", "uid": UID("REQ002")},
-            {"depth": 2, "text": "2.1 Hello, world! (REQ2-001)", "uid": UID("REQ2-001")},
+            {
+                "depth": 2,
+                "text": "2.1 Hello, world! (REQ2-001)",
+                "uid": UID("REQ2-001"),
+            },
         ]
         html_publisher = publisher.check(".html", self.document)
         toc = html_publisher.table_of_contents(linkify=True, obj=self.document)

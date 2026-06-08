@@ -72,7 +72,7 @@ I.e., only one of the documents in the tree should have a template folder."""
         raise common.DoorstopError(
             "Template flag set, but no 'template' folder was found."
         )
-    
+
     # Get the builtin templates.
     template_assets = os.path.join(os.path.dirname(__file__), "files", "templates")
     builtin_template = None

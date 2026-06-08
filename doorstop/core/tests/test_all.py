@@ -725,7 +725,7 @@ class TestPublisher(unittest.TestCase):
             common.log.error(f"Published content changed: {path}")
         common.write_text(text, path)
         self.assertEqual(expected, text)
-        
+
     @patch("plantuml_markdown.PlantUMLPreprocessor.run")
     @patch("plantuml_markdown.PlantUMLPreprocessor.__init__")
     def test_lines_html_document_linkify(self, ext_init, ext_run):
