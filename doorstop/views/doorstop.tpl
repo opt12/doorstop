@@ -106,7 +106,8 @@
 % # CSS Class Assignment  - to map item attributes to css classes
 % # ============================================================================
 
-% if document and hasattr(document, 'items'):
+% doc = locals().get('document')
+% if doc and hasattr(doc, 'items'):
 <script>
 (function() {
   'use strict';
@@ -124,7 +125,7 @@
   }
   
   const items = {
-% for item in document.items:
+% for item in doc.items:
     "{{item.uid}}": {
       normative: {{!'true' if item.get('normative', True) else 'false'}},
 % if item.get('verification-method'):
@@ -137,7 +138,7 @@
   Object.entries(items).forEach(function(entry) {
     var uid = entry[0];
     var attrs = entry[1];
-    var el = document.getElementById(uid);
+    var el = doc.getElementById(uid);
     if (!el) return;
     
     // Normative
