@@ -138,7 +138,7 @@
   Object.entries(items).forEach(function(entry) {
     var uid = entry[0];
     var attrs = entry[1];
-    var el = doc.getElementById(uid);
+    var el = document.getElementById(uid);
     if (!el) return;
     
     // Normative
