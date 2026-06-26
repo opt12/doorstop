@@ -613,53 +613,80 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
         yield "# MANUALLY INDENT, DEDENT, & MOVE ITEMS TO THEIR DESIRED LEVEL"
         yield "# A NEW ITEM WILL BE ADDED FOR ANY UNKNOWN IDS, i.e. - new: "
         yield "# THE COMMENT WILL BE USED AS THE ITEM TEXT FOR NEW ITEMS"
+        yield "# USE '# heading #' TO MARK A NEW ITEM AS HEADING; FOLLOWING TEXT BECOMES ITS HEADER"
         yield "# CHANGES WILL BE REFLECTED IN THE ITEM FILES AFTER CONFIRMATION"
         yield "#" * settings.MAX_LINE_LENGTH
         yield ""
         yield "initial: {}".format(items[0].level if items else 1.0)
         yield "outline:"
+
         for item in items:
             space = "    " * item.depth
+
             # Determine comment text: prefer header, fall back to text
             header_lines = item.header.strip().splitlines() if item.header else []
             text_lines = item.text.strip().splitlines() if item.text else []
+
             if header_lines:
                 comment = header_lines[0].replace("\\", "\\\\")
             elif text_lines:
                 comment = text_lines[0].replace("\\", "\\\\")
             else:
                 comment = ""
-            # Prepend "heading: " for heading items
+
+            # Prepend the heading marker for heading items
             if item.heading:
-                comment = "heading: " + comment
+                comment = "heading # {}".format(comment) if comment else "heading #"
+
             line = space + "- {u}: # {c}".format(u=item.uid, c=comment)
+
             if len(line) > settings.MAX_LINE_LENGTH:
                 line = line[: settings.MAX_LINE_LENGTH - 3] + "..."
+
             yield line
 
     @staticmethod
     def _read_index(path):
-        """Load the index, converting comments to text entries for each item."""
+        """Load the index, converting comments to text or heading entries."""
         with open(path, "r", encoding="utf-8") as stream:
             text = stream.read()
+
         yaml_text = []
+
         for line in text.split("\n"):
-            m = re.search(r"(\s+)(- [\w\d-]+\s*): # (.+)$", line)
+            m = re.search(r"(\s*)(- [\w\d-]+\s*):\s*#\s*(.*)$", line)
             if m:
                 prefix = m.group(1)
                 uid = m.group(2)
-                item_text = m.group(3).replace('"', '\\"')
-                if item_text.startswith("heading: "):
-                    # Heading marker: extract header text
-                    header_text = item_text[len("heading: "):]
-                    yaml_text.append("{p}{u}:".format(p=prefix, u=uid))
-                    yaml_text.append('    {p}- heading: "{t}"'.format(p=prefix, t=header_text))
+                comment = m.group(3)
+
+                # Preserve old behavior:
+                # "- REQ001: #" without comment text is not converted into a
+                # text or heading entry. Whether it becomes a heading is decided
+                # later based on the presence of child elements.
+                if not comment.strip():
+                    yaml_text.append(line)
+                    continue
+
+                heading_match = re.match(r"heading\s*#\s*(.*)$", comment)
+
+                yaml_text.append("{p}{u}:".format(p=prefix, u=uid))
+
+                if heading_match:
+                    # Heading marker: extract header text after "heading #"
+                    header_text = heading_match.group(1).strip().replace('"', '\\"')
+                    yaml_text.append(
+                        '    {p}- heading: "{t}"'.format(p=prefix, t=header_text)
+                    )
                 else:
                     # Normal item: text entry as before
-                    yaml_text.append("{p}{u}:".format(p=prefix, u=uid))
-                    yaml_text.append('    {p}- text: "{t}"'.format(p=prefix, t=item_text))
+                    item_text = comment.replace('"', '\\"')
+                    yaml_text.append(
+                        '    {p}- text: "{t}"'.format(p=prefix, t=item_text)
+                    )
             else:
                 yaml_text.append(line)
+
         return common.load_yaml("\n".join(yaml_text), path)
 
     @staticmethod
