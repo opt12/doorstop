@@ -613,7 +613,7 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
         yield "# MANUALLY INDENT, DEDENT, & MOVE ITEMS TO THEIR DESIRED LEVEL"
         yield "# A NEW ITEM WILL BE ADDED FOR ANY UNKNOWN IDS, i.e. - new: "
         yield "# THE COMMENT WILL BE USED AS THE ITEM TEXT FOR NEW ITEMS"
-        yield "# USE '# heading #' TO MARK A NEW ITEM AS HEADING; FOLLOWING TEXT BECOMES ITS HEADER"
+        yield "# USE '# heading #' or '# HEADING #' TO MARK A NEW ITEM AS HEADING; FOLLOWING TEXT BECOMES ITS HEADER"
         yield "# CHANGES WILL BE REFLECTED IN THE ITEM FILES AFTER CONFIRMATION"
         yield "#" * settings.MAX_LINE_LENGTH
         yield ""
@@ -636,7 +636,7 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
 
             # Prepend the heading marker for heading items
             if item.heading:
-                comment = "heading # {}".format(comment) if comment else "heading #"
+                comment = "HEADING # {}".format(comment) if comment else "HEADING #"
 
             line = space + "- {u}: # {c}".format(u=item.uid, c=comment)
 
@@ -669,7 +669,7 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
                     yaml_text.append(line)
                     continue
 
-                heading_match = re.match(r"heading\s*#\s*(.*)$", comment)
+                heading_match = re.match(r"heading\s*#\s*(.*)$", comment, re.IGNORECASE)
 
                 yaml_text.append("{p}{u}:".format(p=prefix, u=uid))
 
@@ -677,7 +677,7 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
                     # Heading marker: extract header text after "heading #"
                     header_text = heading_match.group(1).strip().replace('"', '\\"')
                     yaml_text.append(
-                        '    {p}- heading: "{t}"'.format(p=prefix, t=header_text)
+                        '    {p}- header: "{t}"'.format(p=prefix, t=header_text)
                     )
                 else:
                     # Normal item: text entry as before
@@ -728,9 +728,9 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
             if isinstance(subsection, str):
                 item_text = subsection
             elif isinstance(subsection, list):
-                if "heading" in subsection[0]:
+                if "header" in subsection[0]:
                     # Item is marked as heading in index, extract header text
-                    item_header = subsection[0]["heading"]
+                    item_header = subsection[0]["header"]
                     level.heading = True
                     subsection = subsection[1:]  # remove heading entry from subsection
                 elif "text" in subsection[0]:

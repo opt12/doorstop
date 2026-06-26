@@ -441,7 +441,7 @@ outline:
             "        - REQ004: # Hello, world!",
             "        - REQ002: # Plantuml",
             "        - REQ2-001: # Hello, world!",
-            "    - REQ007: # heading # My Heading",
+            "    - REQ007: # HEADING # My Heading",
         ]
         # Act
         self.document.index = True  # create index
@@ -898,7 +898,7 @@ outline:
         self.assertEqual([], mock_copytree.call_args_list)
 
     def test_lines_index_writes_heading_marker(self):
-        """Verify heading items are marked with '# heading #' in the index."""
+        """Verify heading items are marked with '# HEADING #' in the index."""
 
         class IndexItem:
             def __init__(self, uid, level, depth, header, text, heading):
@@ -938,20 +938,20 @@ outline:
 
         lines = list(Document._lines_index(items))
 
-        self.assertIn("- REQ001: # heading # My Heading", lines)
+        self.assertIn("- REQ001: # HEADING # My Heading", lines)
         self.assertIn("- REQ002: # Requirement Header", lines)
         self.assertIn("- REQ003: # Requirement text", lines)
 
     def test_read_index_converts_heading_marker(self):
-        """Verify '# heading #' comments are converted to heading entries."""
+        """Verify '# HEADING #' comments are converted to heading entries."""
         lines = """initial: 1.2.3
 outline:
-    - REQ001: # heading # My Heading"""
+    - REQ001: # HEADING # My Heading"""
 
         expected = {
             "initial": "1.2.3",
             "outline": [
-                {"REQ001": [{"heading": "My Heading"}]},
+                {"REQ001": [{"header": "My Heading"}]},
             ],
         }
 
@@ -969,7 +969,7 @@ outline:
         expected = {
             "initial": "1.2.3",
             "outline": [
-                {"REQ001": [{"heading": "My Heading"}]},
+                {"REQ001": [{"header": "My Heading"}]},
             ],
         }
 
@@ -977,7 +977,7 @@ outline:
             actual = self.document._read_index("mock_path")
 
         self.assertEqual(expected, actual)
-            
+
     def test_read_index_preserves_empty_comment(self):
         """Verify empty comments are not converted to text or heading entries."""
         lines = """initial: 1.2.3
@@ -995,6 +995,8 @@ outline:
             actual = self.document._read_index("mock_path")
 
         self.assertEqual(expected, actual)
+
+
 class ReorderItem:
     """Simple item fake for _reorder_section tests."""
 
@@ -1025,6 +1027,7 @@ class ReorderDocument:
         )
         self.added.append(item)
         return item
+
 
 @patch("doorstop.core.item.Item", MockItem)
 class TestDocumentReorder(unittest.TestCase):
@@ -1194,7 +1197,7 @@ class TestDocumentReorder(unittest.TestCase):
 
         section = {
             "NEW": [
-                {"heading": "New Heading"},
+                {"header": "New Heading with a Header"},
             ]
         }
 
@@ -1206,7 +1209,7 @@ class TestDocumentReorder(unittest.TestCase):
         self.assertTrue(item.level.heading)
         self.assertEqual("1.0", str(item.level))
         self.assertFalse(item.normative)
-        self.assertEqual("New Heading", item.header)
+        self.assertEqual("New Heading with a Header", item.header)
         self.assertEqual("", item.text)
 
     def test_reorder_section_creates_new_requirement_with_text(self):
