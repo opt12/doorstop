@@ -658,6 +658,7 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
             if m:
                 prefix = m.group(1)
                 uid = m.group(2)
+                uid = m.group(2)
                 comment = m.group(3)
 
                 # Preserve old behavior:
@@ -710,8 +711,8 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
         """Recursive function to reorder a section of an outline.
 
         :param section: recursive `list` of `dict` loaded from document index
-        :param level: current :class:`~doorstop.core.types.Level`
-        :param document: :class:`~doorstop.core.document.Document` to order
+        :param level: current :class`~doorstop.core.types.Level`
+        :param document: :class`~doorstop.core.document.Document` to order
 
         """
         if isinstance(section, dict):  # a section
