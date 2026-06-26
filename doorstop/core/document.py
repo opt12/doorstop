@@ -620,8 +620,18 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
         yield "outline:"
         for item in items:
             space = "    " * item.depth
-            lines = item.text.strip().splitlines()
-            comment = lines[0].replace("\\", "\\\\") if lines else ""
+            # Determine comment text: prefer header, fall back to text
+            header_lines = item.header.strip().splitlines() if item.header else []
+            text_lines = item.text.strip().splitlines() if item.text else []
+            if header_lines:
+                comment = header_lines[0].replace("\\", "\\\\")
+            elif text_lines:
+                comment = text_lines[0].replace("\\", "\\\\")
+            else:
+                comment = ""
+            # Prepend "heading: " for heading items
+            if item.heading:
+                comment = "heading: " + comment
             line = space + "- {u}: # {c}".format(u=item.uid, c=comment)
             if len(line) > settings.MAX_LINE_LENGTH:
                 line = line[: settings.MAX_LINE_LENGTH - 3] + "..."
@@ -639,8 +649,15 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
                 prefix = m.group(1)
                 uid = m.group(2)
                 item_text = m.group(3).replace('"', '\\"')
-                yaml_text.append("{p}{u}:".format(p=prefix, u=uid))
-                yaml_text.append('    {p}- text: "{t}"'.format(p=prefix, t=item_text))
+                if item_text.startswith("heading: "):
+                    # Heading marker: extract header text
+                    header_text = item_text[len("heading: "):]
+                    yaml_text.append("{p}{u}:".format(p=prefix, u=uid))
+                    yaml_text.append('    {p}- heading: "{t}"'.format(p=prefix, t=header_text))
+                else:
+                    # Normal item: text entry as before
+                    yaml_text.append("{p}{u}:".format(p=prefix, u=uid))
+                    yaml_text.append('    {p}- text: "{t}"'.format(p=prefix, t=item_text))
             else:
                 yaml_text.append(line)
         return common.load_yaml("\n".join(yaml_text), path)
@@ -677,31 +694,43 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
                 return
             subsection = section[uid]
 
-            # An item is a header if it has a subsection
             level.heading = False
             item_text = ""
+            item_header = ""
             if isinstance(subsection, str):
                 item_text = subsection
             elif isinstance(subsection, list):
-                if "text" in subsection[0]:
+                if "heading" in subsection[0]:
+                    # Item is marked as heading in index, extract header text
+                    item_header = subsection[0]["heading"]
+                    level.heading = True
+                    subsection = subsection[1:]  # remove heading entry from subsection
+                elif "text" in subsection[0]:
+                    # Extract text for new non-heading items
                     item_text = subsection[0]["text"]
-                    if len(subsection) > 1:
-                        level.heading = True
+                    subsection = subsection[1:]  # remove text entry from subsection
+                # Item is a heading if it has child elements
+                if len(subsection) > 0:
+                    level.heading = True
 
             try:
                 item = document.find_item(uid)
+                # Existing item: only update level, leave content untouched
                 item.level = level
                 log.info("Found ({}): {}".format(uid, level))
                 list_of_ids.append(uid)
             except DoorstopError:
+                # New item: set level and content
                 item = document.add_item(level=level, reorder=False)
                 list_of_ids.append(item.uid)
                 if level.heading:
                     item.normative = False
-                item.text = item_text
+                    item.header = item_header
+                else:
+                    item.text = item_text
                 log.info("Created ({}): {}".format(item.uid, level))
 
-            # Process the heading's subsection
+            # Process the subsection recursively
             if subsection:
                 Document._reorder_section(subsection, level >> 1, document, list_of_ids)
 
