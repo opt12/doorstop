@@ -1,33 +1,37 @@
 /**
  * doorstop-hover-preview.js
- * 
- * Zeigt beim Hovern über Requirement-Links eine Vorschau des verlinkten
- * Requirements an. Unterstützt same-page Links und Links zu anderen Dateien
- * im gleichen Export.
- * 
- * Einbinden: <script src="doorstop-hover-preview.js"></script>
+ *
+ * Displays a preview popup when hovering over requirement links in a Doorstop
+ * HTML export. Supports same-page links and links to other files in the same
+ * export (loaded via fetch).
+ *
+ * Usage: <script src="../template/doorstop-hover-preview.js" defer></script>
  */
 
 (function () {
     'use strict';
 
-    // ─── Konfiguration ────────────────────────────────────────────────────────
+    // ─── Configuration ────────────────────────────────────────────────────────
     const CONFIG = {
-        // Verzögerung in ms bevor die Vorschau erscheint / verschwindet
+        // Delay in ms before the preview appears / disappears
         showDelay: 200,
         hideDelay: 150,
 
-        // Maximale Breite/Höhe der Vorschau
+        // Maximum width/height of the preview popup
         maxWidth: '500px',
         maxHeight: '400px',
 
-        // Abstand zum Cursor / Fensterrand in px
+        // Offset from cursor / viewport edge in px
         cursorOffset: 12,
         viewportMargin: 16,
 
-        // CSS-Klassen-Prefix (für einfache Anpassung)
+        // CSS class prefix (for easy customization)
         cssPrefix: 'ds-preview',
     };
+
+    // ─── Base URL ─────────────────────────────────────────────────────────────
+    // Captured once at page load — never changes, even when previews are nested
+    const PAGE_BASE = window.location.href.replace(/\/[^/]*$/, '/');
 
     // ─── CSS ──────────────────────────────────────────────────────────────────
     const CSS = `
@@ -45,7 +49,6 @@
       font-size: 0.875rem;
       line-height: 1.5;
       color: #333333;
-      pointer-events: none;
     }
 
     .ds-preview-popup.ds-preview-visible {
@@ -66,7 +69,7 @@
     }
 
     .ds-preview-body {
-      /* Inhalt des Requirements */
+      /* Requirement content */
     }
 
     .ds-preview-body img {
@@ -93,14 +96,14 @@
   `;
 
     // ─── State ────────────────────────────────────────────────────────────────
-    // Cache für geladene HTML-Dokumente: url → Document
+    // Cache for fetched HTML documents: url → { doc, base }
     const docCache = new Map();
 
     let popup = null;
     let showTimer = null;
     let hideTimer = null;
 
-    // ─── Init ─────────────────────────────────────────────────────────────────
+    // ─── Initialisation ───────────────────────────────────────────────────────
     function init() {
         injectStyles();
         createPopup();
@@ -116,40 +119,67 @@
     function createPopup() {
         popup = document.createElement('div');
         popup.className = `${CONFIG.cssPrefix}-popup ${CONFIG.cssPrefix}-hidden`;
+
+        // Keep popup visible when mouse moves into it
+        popup.addEventListener('mouseover', () => {
+            clearTimeout(hideTimer);
+        });
+
+        // Hide popup when mouse leaves it
+        popup.addEventListener('mouseout', (e) => {
+            if (popup.contains(e.relatedTarget)) return;
+            hideTimer = setTimeout(() => {
+                hidePopup();
+            }, CONFIG.hideDelay);
+        });
+
         document.body.appendChild(popup);
     }
 
-    // ─── Link-Erkennung ───────────────────────────────────────────────────────
+    // ─── Link detection ───────────────────────────────────────────────────────
     /**
-     * Gibt zurück ob ein Anchor-Element ein Requirement-Link ist.
-     * Erkennt:
-     *   href="REQ.html#REQ003"     → { file: 'REQ.html', id: 'REQ003' }
+     * Parses an anchor element and returns requirement link info, or null.
+     *
+     * Recognised formats:
+     *   href="REQ.html#REQ003"        → { file: 'REQ.html', id: 'REQ003' }
      *   href="../foo/REQ.html#REQ003" → { file: '../foo/REQ.html', id: 'REQ003' }
-     *   href="#TUT001"             → { file: null, id: 'TUT001' }
+     *   href="#TUT001"                → { file: null, id: 'TUT001' }
+     *
+     * Requirement ID pattern: 2+ letters, optional dash/underscore, digits
+     * e.g. REQ003, TUT001, SRS-213, HLT_004
      */
     function parseRequirementLink(anchor) {
         const href = anchor.getAttribute('href');
         if (!href) return null;
 
-        // Ignoriere externe Links, Mailto etc.
-        if (/^(https?:|mailto:|javascript:)/i.test(href)) return null;
+        // Ignore mailto, javascript etc.
+        if (/^(mailto:|javascript:)/i.test(href)) return null;
 
+        // Handle absolute URLs — only accept same-origin
+        if (/^https?:/i.test(href)) {
+            if (!href.startsWith(window.location.origin)) return null;
+            // Extract the fragment
+            const url = new URL(href);
+            const id = url.hash.slice(1);
+            if (!id || !/^[A-Za-z]{2,}[-_]?[0-9]+$/.test(id)) return null;
+            // File path relative to PAGE_BASE
+            const filePath = url.href.replace(url.hash, '');
+            return { file: filePath, id };
+        }
+
+        // Relative URLs
         const hashIndex = href.indexOf('#');
         if (hashIndex === -1) return null;
 
         const id = href.slice(hashIndex + 1);
         if (!id) return null;
-
-        // Requirement-IDs haben typischerweise das Format PREFIX + Ziffern
-        // z.B. REQ003, TUT001, HLT002 — mindestens 2 Buchstaben + Ziffern
-        if (!/^[A-Za-z]{2,}[0-9]+$/.test(id)) return null;
+        if (!/^[A-Za-z]{2,}[-_]?[0-9]+$/.test(id)) return null;
 
         const filePart = href.slice(0, hashIndex) || null;
-
         return { file: filePart, id };
     }
 
-    // ─── Event-Listener ───────────────────────────────────────────────────────
+    // ─── Event listeners ──────────────────────────────────────────────────────
     function attachListeners() {
         document.addEventListener('mouseover', onMouseOver);
         document.addEventListener('mouseout', onMouseOut);
@@ -173,63 +203,86 @@
 
     function onMouseOut(e) {
         clearTimeout(showTimer);
+        // Do not hide if the mouse moves into the popup
+        if (popup.contains(e.relatedTarget)) return;
         hideTimer = setTimeout(() => {
             hidePopup();
         }, CONFIG.hideDelay);
     }
 
     function onMouseMove(e) {
-        if (popup && !popup.classList.contains(`${CONFIG.cssPrefix}-hidden`)) {
+        // Do not reposition while the mouse is inside the popup (user may be scrolling)
+        if (popup.matches(':hover')) return;
+        if (!popup.classList.contains(`${CONFIG.cssPrefix}-hidden`)) {
             positionPopup(e.clientX, e.clientY);
         }
     }
 
-    // ─── Vorschau anzeigen ────────────────────────────────────────────────────
+    // ─── Show preview ─────────────────────────────────────────────────────────
     async function showPreview(link, x, y) {
         setPopupContent(
-            `<div class="${CONFIG.cssPrefix}-loading">Lade…</div>`,
-            null
+            `<div class="${CONFIG.cssPrefix}-loading">Loading…</div>`,
+            null,
+            PAGE_BASE
         );
         showPopup(x, y);
 
         try {
-            const { heading, body } = await extractRequirement(link);
-            setPopupContent(body, heading);
+            const { heading, body, base } = await extractRequirement(link);
+            setPopupContent(body, heading, base);
             positionPopup(x, y);
         } catch (err) {
             setPopupContent(
-                `<div class="${CONFIG.cssPrefix}-error">Fehler: ${escapeHtml(err.message)}</div>`,
-                null
+                `<div class="${CONFIG.cssPrefix}-error">Error: ${escapeHtml(err.message)}</div>`,
+                null,
+                PAGE_BASE
             );
         }
     }
 
-    function setPopupContent(bodyHtml, headingText) {
+    function setPopupContent(bodyHtml, headingText, base) {
         const headerHtml = headingText
             ? `<div class="${CONFIG.cssPrefix}-header">${escapeHtml(headingText)}</div>`
             : '';
         popup.innerHTML = `${headerHtml}<div class="${CONFIG.cssPrefix}-body">${bodyHtml}</div>`;
+
+        // Rewrite all relative links in the popup to absolute URLs
+        // so that nested hover previews resolve correctly
+        popup.querySelectorAll('a[href]').forEach(a => {
+            const href = a.getAttribute('href');
+            if (!href || /^(https?:|mailto:|javascript:|#)/i.test(href)) return;
+            try {
+                a.setAttribute('href', new URL(href, base).href);
+            } catch (e) { /* ignore invalid URLs */ }
+        });
     }
 
-    // ─── Requirement extrahieren ──────────────────────────────────────────────
+    // ─── Requirement extraction ───────────────────────────────────────────────
     async function extractRequirement(link) {
         let doc;
+        let base = PAGE_BASE;
 
         if (link.file) {
-            doc = await fetchDocument(resolveUrl(link.file));
+            // link.file kann jetzt bereits eine absolute URL sein
+            const url = /^https?:/i.test(link.file)
+                ? link.file
+                : resolveUrl(link.file, base);
+            const fetched = await fetchDocument(url);
+            doc = fetched.doc;
+            base = fetched.base;
         } else {
             doc = document;
+            base = PAGE_BASE;
         }
 
-        return extractFromDocument(doc, link.id);
+        const { heading, body } = extractFromDocument(doc, link.id);
+        return { heading, body, base };
     }
 
     /**
-     * Löst eine relative Datei-URL relativ zur aktuellen Seite auf.
+     * Resolves a relative file path against an explicit base URL.
      */
-    function resolveUrl(filePath) {
-        // Basis = Verzeichnis der aktuellen Seite
-        const base = window.location.href.replace(/\/[^/]*$/, '/');
+    function resolveUrl(filePath, base) {
         return new URL(filePath, base).href;
     }
 
@@ -240,30 +293,33 @@
 
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status} beim Laden von ${url}`);
+            throw new Error(`HTTP ${response.status} loading ${url}`);
         }
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        docCache.set(url, doc);
-        return doc;
+        // Store the base URL of the fetched document for resolving its relative links
+        const base = url.replace(/\/[^/]*$/, '/');
+        const entry = { doc, base };
+        docCache.set(url, entry);
+        return entry;
     }
 
     /**
-     * Extrahiert Heading-Text + Body-HTML eines Requirements aus einem Document.
-     * 
-     * Ein Requirement beginnt an einem Heading-Element (h1–h6) mit dem gesuchten id,
-     * und endet vor dem nächsten Heading-Element mit einem id-Attribut.
+     * Extracts the heading text and body HTML of a requirement from a Document.
+     *
+     * A requirement starts at a heading element (h1–h6) with the given id,
+     * and ends before the next heading element that has an id attribute.
      */
     function extractFromDocument(doc, id) {
         const headingEl = doc.getElementById(id);
         if (!headingEl) {
-            throw new Error(`Requirement "${id}" nicht gefunden.`);
+            throw new Error(`Requirement "${id}" not found.`);
         }
 
         const headingText = headingEl.textContent.trim();
 
-        // Sammle alle Siblings bis zum nächsten Heading mit ID
+        // Collect all siblings until the next heading with an id
         const bodyNodes = [];
         let sibling = headingEl.nextElementSibling;
 
@@ -275,7 +331,7 @@
 
         return {
             heading: headingText,
-            body: bodyNodes.join('\n') || '<em>(kein Inhalt)</em>',
+            body: bodyNodes.join('\n') || '<em>(no content)</em>',
         };
     }
 
@@ -283,7 +339,7 @@
         return /^H[1-6]$/i.test(el.tagName) && el.hasAttribute('id');
     }
 
-    // ─── Popup-Positionierung ─────────────────────────────────────────────────
+    // ─── Popup positioning ────────────────────────────────────────────────────
     function showPopup(x, y) {
         popup.classList.remove(`${CONFIG.cssPrefix}-hidden`);
         popup.classList.add(`${CONFIG.cssPrefix}-visible`);
@@ -306,24 +362,24 @@
         let left = x + offset;
         let top = y + offset;
 
-        // Rechten Rand einhalten
+        // Keep within right edge
         if (left + pw + margin > vw) {
             left = x - pw - offset;
         }
-        // Unteren Rand einhalten
+        // Keep within bottom edge
         if (top + ph + margin > vh) {
             top = y - ph - offset;
         }
-        // Linken Rand einhalten
+        // Keep within left edge
         if (left < margin) left = margin;
-        // Oberen Rand einhalten
+        // Keep within top edge
         if (top < margin) top = margin;
 
         popup.style.left = `${left}px`;
         popup.style.top = `${top}px`;
     }
 
-    // ─── Hilfsfunktionen ──────────────────────────────────────────────────────
+    // ─── Utilities ────────────────────────────────────────────────────────────
     function escapeHtml(str) {
         return String(str)
             .replace(/&/g, '&amp;')
@@ -332,7 +388,7 @@
             .replace(/"/g, '&quot;');
     }
 
-    // ─── Start ────────────────────────────────────────────────────────────────
+    // ─── Bootstrap ────────────────────────────────────────────────────────────
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
