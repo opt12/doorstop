@@ -158,3 +158,4 @@
 % # End of CSS class assignment
 % # ============================================================================
 <script src="{{baseurl}}{{tmpRef}}template/bootstrap.bundle.min.js"></script>
+<script src="{{baseurl}}{{tmpRef}}template/doorstop-hover-preview.js"></script>

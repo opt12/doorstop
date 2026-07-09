@@ -30,6 +30,7 @@ HTML_TEMPLATE_WALK = """
     template/
         bootstrap.bundle.min.js
         bootstrap.min.css
+        doorstop-hover-preview.js
         doorstop.css
         general.css
         jquery.min.js
