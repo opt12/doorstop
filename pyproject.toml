@@ -1,7 +1,7 @@
 [tool.poetry]
 
 name = "doorstop"
-version = "3.1.dev0+siebmeyer"
+version = "3.2.dev0+siebmeyer"
 description = "Requirements management using version control."
 
 license = "LGPLv3"
@@ -73,11 +73,11 @@ types-requests = "*"
 types-setuptools = "*"
 
 # Testing
-pytest = "^8.0"
+pytest = "^8.4"
 pytest-cov = "*"
 pytest-expecter = "*"
 pytest-sugar = "*"
-webtest = "^3.0.0"
+webtest = "^3.0.7"
 diff-cover = "^8.0.3"
 
 # Reports
@@ -88,7 +88,7 @@ mkdocs = "^1.5"
 pygments = "*"
 
 # Tooling
-pyinstaller = "*"
+pyinstaller = "^6.21"
 sniffer = "*"
 pync = { version = "*", platform = "darwin" }
 rope = "*"
