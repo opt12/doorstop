@@ -159,7 +159,7 @@ class ItemValidator:
         identifiers = set()
         for uid in item.links:
             try:
-                parent = tree.find_item(uid)
+                parent = tree.find_item(uid, include_inactive=True)
             except DoorstopError:
                 identifiers.add(uid)  # keep the invalid UID
                 msg = "linked to unknown item: {}".format(uid)

@@ -415,10 +415,11 @@ class Tree(BaseValidatable):  # pylint: disable=R0902
 
         raise DoorstopError(Prefix.UNKNOWN_MESSAGE.format(prefix))
 
-    def find_item(self, value, _kind=""):
+    def find_item(self, value, _kind="", include_inactive=False):
         """Get an item by its UID.
 
         :param value: item or UID
+        :param include_inactive: also return items that are inactive
 
         :raises: :class:`~doorstop.common.DoorstopError` if the item
             cannot be found
@@ -433,7 +434,7 @@ class Tree(BaseValidatable):  # pylint: disable=R0902
             item = self._item_cache[uid]
             if item:
                 log.trace("found cached item: {}".format(item))  # type: ignore
-                if item.active:
+                if item.active or include_inactive:
                     return item
                 else:
                     log.trace("item is inactive: {}".format(item))  # type: ignore
@@ -442,7 +443,9 @@ class Tree(BaseValidatable):  # pylint: disable=R0902
         except KeyError:
             for document in self:
                 try:
-                    item = document.find_item(uid, _kind=_kind)
+                    item = document.find_item(
+                        uid, _kind=_kind, include_inactive=include_inactive
+                    )
                 except DoorstopError:
                     pass  # item not found in that document
                 else:
@@ -450,7 +453,7 @@ class Tree(BaseValidatable):  # pylint: disable=R0902
                     if settings.CACHE_ITEMS:
                         self._item_cache[uid] = item
                         log.trace("cached item: {}".format(item))  # type: ignore
-                    if item.active:
+                    if item.active or include_inactive:
                         return item
                     else:
                         log.trace("item is inactive: {}".format(item))  # type: ignore
