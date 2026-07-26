@@ -14,6 +14,7 @@ from unittest.mock import ANY, MagicMock, Mock, call, patch
 
 from doorstop.core import publisher
 from doorstop.core.document import Document
+from doorstop.core.publishers.html import HtmlPublisher
 from doorstop.core.template import HTMLTEMPLATE
 from doorstop.core.tests import (
     EMPTY,
@@ -380,3 +381,27 @@ class TestTableOfContents(unittest.TestCase):
         html_publisher = publisher.check(".html", self.document)
         toc = html_publisher.table_of_contents(linkify=True, obj=self.document)
         self.assertEqual(expected, toc)
+
+
+class TestProcessLists(unittest.TestCase):
+    """Unit tests for list processing in the HTML publisher."""
+
+    def setUp(self):
+        self.publisher = HtmlPublisher(Mock(), ".html")
+
+    def test_list_starting_indented_terminates(self):
+        """Verify a list whose first item is indented does not loop forever."""
+        self.publisher.process_lists("  - item one", "  - item two")
+
+        # Unwinding to a smaller indentation must terminate.
+        _, block, line = self.publisher.process_lists("- outer", "")
+
+        self.assertIn("</ul>", block)
+        self.assertEqual("</ul>", line)
+
+    def test_list_starting_indented_terminates_at_end_of_list(self):
+        """Verify an indented list is closed when the list ends."""
+        _, _, line = self.publisher.process_lists("  - only item", "")
+
+        self.assertEqual("</ul>", line)
+        self.assertFalse(self.publisher.list["found"]["itemize"])
