@@ -853,10 +853,11 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
             for item in items_at_level:
                 yield level, item
 
-    def find_item(self, value, _kind=""):
+    def find_item(self, value, _kind="", include_inactive=False):
         """Return an item by its UID.
 
         :param value: item or UID
+        :param include_inactive: also return items that are inactive
 
         :raises: :class:`~doorstop.common.DoorstopError` if the item
             cannot be found
@@ -867,7 +868,7 @@ class Document(BaseValidatable, BaseFileObject):  # pylint: disable=R0902
         uid = UID(value)
         for item in self:
             if item.uid == uid:
-                if item.active:
+                if item.active or include_inactive:
                     return item
                 else:
                     log.trace("item is inactive: {}".format(item))  # type: ignore

@@ -166,6 +166,27 @@ class TestItemValidator(unittest.TestCase):
         self.assertTrue(self.item_validator.validate(self.item))
 
     @patch("doorstop.settings.STAMP_NEW_LINKS", False)
+    def test_validate_link_to_inactive_is_found(self):
+        """Verify an inactive parent is reported as inactive, not unknown."""
+        mock_item = Mock()
+        mock_item.active = False
+
+        def find_item(uid, _kind="", include_inactive=False):
+            """Behave like Tree.find_item, which hides inactive items."""
+            if not include_inactive:
+                raise DoorstopError("no item with UID: {}".format(uid))
+            return mock_item
+
+        mock_tree = MagicMock()
+        mock_tree.find_item = find_item
+        self.item.links = ["a"]
+        self.item.tree = mock_tree
+        self.item_validator.disable_get_issues_document()
+        with ListLogHandler(core.validators.item_validator.log) as handler:
+            self.assertTrue(self.item_validator.validate(self.item))
+            self.assertNotIn("linked to unknown item: a", handler.records)
+
+    @patch("doorstop.settings.STAMP_NEW_LINKS", False)
     def test_validate_link_to_nonnormative(self):
         """Verify a link to an non-normative item can be checked."""
         mock_item = Mock()
@@ -219,7 +240,7 @@ class TestItemValidator(unittest.TestCase):
 
         mock_tree = Mock()
         mock_tree.__iter__ = mock_iter
-        mock_tree.find_item = lambda uid: Mock(uid="fake1")
+        mock_tree.find_item = lambda uid, **kwargs: Mock(uid="fake1")
 
         self.item.tree = mock_tree
 
@@ -285,7 +306,7 @@ class TestItemValidator(unittest.TestCase):
 
         mock_tree = Mock()
         mock_tree.__iter__ = mock_iter
-        mock_tree.find_item = lambda uid: Mock(uid="fake1")
+        mock_tree.find_item = lambda uid, **kwargs: Mock(uid="fake1")
         self.item.tree = mock_tree
 
         self.assertTrue(self.item_validator.validate(self.item))
@@ -328,7 +349,7 @@ class TestItemValidator(unittest.TestCase):
 
         mock_tree = Mock()
         mock_tree.__iter__ = mock_iter([root_doc, child_doc_a, child_doc_b])
-        mock_tree.find_item = lambda uid: next(
+        mock_tree.find_item = lambda uid, **kwargs: next(
             filter(lambda item: item.uid == uid, all_items), None
         )
 
