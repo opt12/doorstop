@@ -14,6 +14,7 @@ from doorstop.core.publishers._latex_functions import (
     _check_for_new_table,
     _fix_table_line,
     _latex_convert,
+    _latex_convert_with_inline_math,
     _typeset_latex_image,
 )
 from doorstop.core.publishers.base import (
@@ -437,7 +438,7 @@ class LaTeXPublisher(BasePublisher):
                         "Cannot handle multiple math environments on one row."
                     )
             else:
-                line = _latex_convert(line)
+                line = _latex_convert_with_inline_math(line)
             # Skip all other changes if in MATH!
             if math_found:
                 line = line + "\\\\"

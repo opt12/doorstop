@@ -485,3 +485,30 @@ class TestPublisherModule(MockDataMixIn, unittest.TestCase):
         result = getLines(publisher.publish_lines(item, ".tex"))
         # Assert
         self.assertEqual(expected, result)
+
+    def test_inline_math_is_not_escaped(self):
+        """Verify that dollar signs delimiting inline math are not escaped."""
+        generated_data = (
+            r"active: true" + "\n"
+            r"derived: false" + "\n"
+            r"header: ''" + "\n"
+            r"level: 1.1" + "\n"
+            r"normative: false" + "\n"
+            r"reviewed:" + "\n"
+            r"text: |" + "\n"
+            r"  Inline math like $e=mc^2$ is rendered." + "\n"
+            r"  An unpaired $ sign stays escaped."
+        )
+        item = MockItemAndVCS(
+            "path/to/REQ-001.yml",
+            _file=generated_data,
+        )
+        expected = (
+            r"\subsection{REQ-001}\label{REQ-001}\zlabel{REQ-001}" + "\n\n"
+            r"Inline math like $e=mc^2$ is rendered." + "\n"
+            r"An unpaired \$ sign stays escaped." + "\n\n"
+        )
+        # Act
+        result = getLines(publisher.publish_lines(item, ".tex"))
+        # Assert
+        self.assertEqual(expected, result)
