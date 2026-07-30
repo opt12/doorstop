@@ -85,8 +85,7 @@ def _latex_convert_with_inline_math(line):
     if len(parts) < 3 or len(parts) % 2 == 0:
         return _latex_convert(line)
     return "$".join(
-        part if index % 2 else _latex_convert(part)
-        for index, part in enumerate(parts)
+        part if index % 2 else _latex_convert(part) for index, part in enumerate(parts)
     )
 
 
