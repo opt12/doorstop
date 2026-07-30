@@ -76,6 +76,19 @@ def _latex_convert(line):
     return line
 
 
+def _latex_convert_with_inline_math(line):
+    """Convert a line to LaTeX, leaving inline math ($...$) untouched."""
+    # Split on unescaped dollar signs so that literal '\$' is left alone.
+    parts = re.split(r"(?<!\\)\$", line)
+    # A complete inline math environment yields an odd number of parts, of
+    # which every second one is math. Anything else has no math to protect.
+    if len(parts) < 3 or len(parts) % 2 == 0:
+        return _latex_convert(line)
+    return "$".join(
+        part if index % 2 else _latex_convert(part) for index, part in enumerate(parts)
+    )
+
+
 def _typeset_latex_image(image_match, line, block):
     """Typeset images."""
     image_title, image_path = image_match[0]
