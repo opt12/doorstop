@@ -1336,15 +1336,18 @@ toml = ["toml"]
 
 [[package]]
 name = "python-markdown-math"
-version = "0.6"
+version = "0.9"
 description = "Math extension for Python-Markdown"
 optional = false
-python-versions = "*"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "python-markdown-math-0.6.tar.gz", hash = "sha256:c68d8cb9695cb7b435484403dc18941d1bad0ff148e4166d9417046a0d5d3022"},
-    {file = "python_markdown_math-0.6-py2.py3-none-any.whl", hash = "sha256:d443e264cf063623a5f02b0c9730867e5172b31d49967da424ed3457c25b2848"},
+    {file = "python_markdown_math-0.9-py3-none-any.whl", hash = "sha256:ac9932df517a5c0f6d01c56e7a44d065eca4a420893ac45f7a6937c67cb41e86"},
+    {file = "python_markdown_math-0.9.tar.gz", hash = "sha256:567395553dc4941e79b3789a1096dcabb3fda9539d150d558ef3507948b264a3"},
 ]
+
+[package.dependencies]
+Markdown = ">=3.0"
 
 [[package]]
 name = "python-termstyle"
@@ -1906,4 +1909,4 @@ tests = ["PasteDeploy", "WSGIProxy2", "coverage", "pyquery", "pytest", "pytest-c
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.15"
-content-hash = "17769e417a7fe9997c85b646da76a9082527177ad4d3a90cd4c59d5863fe3da6"
+content-hash = "6e348fefab2ef21fa4f9c3dbc13c1a5964ac2046643d2a2a8ffc986e8196485a"
