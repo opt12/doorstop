@@ -501,7 +501,7 @@ attributes:
 
 For simple scalar attributes (strings, numbers), the value is rendered directly in the output table.
 
-For list attributes, the values are joined with `; ` as separator:
+For list attributes, the values are joined with `<br>` as separator:
 
 ```yaml
 # Item attribute:
@@ -510,7 +510,7 @@ verification-method:
   - analysis
 
 # Rendered as:
-# | verification-method | system test; analysis |
+# | verification-method | system test<br>analysis |
 ```
 
 ### Publishing sub-attributes of structured attributes
@@ -538,4 +538,4 @@ The `fields` list supports two entry formats:
 | `{url_key: label_key}` | `url: section` | `[section value](url value)` rendered as hyperlink |
 | `fieldname`            | `section`      | plain text value of that sub-attribute             |
 
-Multiple entries in the structured attribute list are separated by `; ` in the published output.
+Multiple entries in the structured attribute list are separated by `<br>` in the published output.
