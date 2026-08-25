@@ -11,7 +11,14 @@ from shutil import rmtree
 from unittest.mock import MagicMock, Mock, patch
 
 from doorstop.core import publisher
-from doorstop.core.publishers.tests.helpers import YAML_CUSTOM_ATTRIBUTES, getLines
+from doorstop.core.publishers.markdown import MarkdownPublisher
+from doorstop.core.publishers.tests.helpers import (
+    YAML_CUSTOM_ATTRIBUTES,
+    YAML_INVALID_PUBLISH_ENTRY,
+    YAML_LIST_ATTRIBUTE,
+    YAML_STRUCTURED_ATTRIBUTES,
+    getLines,
+)
 from doorstop.core.tests import (
     EMPTY,
     FILES,
@@ -328,3 +335,221 @@ class TestTableOfContents(unittest.TestCase):
         md_publisher.create_index(FILES, index="index2.md", tree=mock_tree)
         # Assert
         self.assertTrue(os.path.isfile(path))
+
+
+class TestParsePublishEntry(unittest.TestCase):
+    """Unit tests for MarkdownPublisher._parse_publish_entry()."""
+
+    def test_string_entry(self):
+        """Simple string entry returns attr with no fields."""
+        result = MarkdownPublisher._parse_publish_entry("invented-by")
+        self.assertEqual(result, {"attr": "invented-by", "fields": None})
+
+    def test_dict_entry_with_fields(self):
+        """Dict entry with attr and fields is parsed correctly."""
+        entry = {"attr": "spec-refs-from", "fields": [{"url": "section"}]}
+        result = MarkdownPublisher._parse_publish_entry(entry)
+        self.assertEqual(
+            result, {"attr": "spec-refs-from", "fields": [{"url": "section"}]}
+        )
+
+    def test_dict_entry_without_fields(self):
+        """Dict entry without fields returns fields=None."""
+        entry = {"attr": "spec-refs-from"}
+        result = MarkdownPublisher._parse_publish_entry(entry)
+        self.assertEqual(result, {"attr": "spec-refs-from", "fields": None})
+
+    def test_dict_entry_missing_attr(self):
+        """Dict entry without attr key returns attr=None."""
+        entry = {"fields": [{"url": "section"}]}
+        result = MarkdownPublisher._parse_publish_entry(entry)
+        self.assertIsNone(result["attr"])
+
+    def test_invalid_entry_returns_none(self):
+        """Non-string, non-dict entry returns None."""
+        self.assertIsNone(MarkdownPublisher._parse_publish_entry(42))
+        self.assertIsNone(MarkdownPublisher._parse_publish_entry(None))
+        self.assertIsNone(MarkdownPublisher._parse_publish_entry(["list"]))
+
+
+class TestRenderFields(unittest.TestCase):
+    """Unit tests for MarkdownPublisher._render_fields()."""
+
+    def setUp(self):
+        self.refs = [
+            {
+                "file": "specs/login.md",
+                "section": "3.1 Login Process",
+                "anchor": "31-login-process",
+                "url": "https://gitlab.com/group/project/-/blob/main/specs/login.md#31-login-process",
+            },
+            {
+                "file": "specs/session.md",
+                "section": "3.2 Session Management",
+                "anchor": "32-session-management",
+                "url": "https://gitlab.com/group/project/-/blob/main/specs/session.md#32-session-management",
+            },
+        ]
+
+    def test_single_ref_link(self):
+        """Single ref with url:section renders as Markdown link."""
+        fields = [{"url": "section"}]
+        result = MarkdownPublisher._render_fields(self.refs[:1], fields)
+        self.assertEqual(
+            result,
+            "[3.1 Login Process](https://gitlab.com/group/project/-/blob/main/specs/login.md#31-login-process)",
+        )
+
+    def test_multiple_refs_joined_with_br(self):
+        """Multiple refs are joined with <br>."""
+        fields = [{"url": "section"}]
+        result = MarkdownPublisher._render_fields(self.refs, fields)
+        self.assertIn("<br>", result)
+        parts = result.split("<br>")
+        self.assertEqual(len(parts), 2)
+        self.assertIn("3.1 Login Process", parts[0])
+        self.assertIn("3.2 Session Management", parts[1])
+
+    def test_plain_text_field(self):
+        """Plain string field renders as plain text value."""
+        fields = ["section"]
+        result = MarkdownPublisher._render_fields(self.refs[:1], fields)
+        self.assertEqual(result, "3.1 Login Process")
+
+    def test_missing_url_renders_label_only(self):
+        """Missing url field renders label text without link."""
+        refs = [{"section": "3.1 Login Process"}]
+        fields = [{"url": "section"}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(result, "3.1 Login Process")
+
+    def test_missing_field_renders_empty_string(self):
+        """Missing plain field renders empty string."""
+        refs = [{"section": "3.1 Login Process"}]
+        fields = ["nonexistent"]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(result, "")
+
+    def test_url_stripped_of_whitespace(self):
+        """URL with trailing newline (YAML literal block) is stripped."""
+        refs = [
+            {
+                "section": "Stop Functions",
+                "url": "https://gitlab.com/group/project#stop-functions\n",
+            }
+        ]
+        fields = [{"url": "section"}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertNotIn("\n", result)
+        self.assertIn("https://gitlab.com/group/project#stop-functions", result)
+
+    def test_empty_refs_returns_empty_string(self):
+        """Empty refs list returns empty string."""
+        result = MarkdownPublisher._render_fields([], [{"url": "section"}])
+        self.assertEqual(result, "")
+
+    def test_multiple_fields_per_ref(self):
+        """Multiple fields per ref are joined with space."""
+        fields = ["section", "anchor"]
+        result = MarkdownPublisher._render_fields(self.refs[:1], fields)
+        self.assertEqual(result, "3.1 Login Process 31-login-process")
+
+
+class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
+    """Integration tests for modified _lines_markdown() custom attribute handling."""
+
+    def _make_item(self, document_yaml: str, item_data: str) -> tuple:
+        """Helper: create MockDocument + MockItem from YAML strings."""
+        document = MockDocument("/some/path")
+        document._file = document_yaml
+        document.load(reload=True)
+        item_path = os.path.join("path", "to", "REQ-001.yml")
+        item = MockItem(document, item_path)
+        item._file = item_data
+        item.load(reload=True)
+        document._items.append(item)
+        return document, item
+
+    def test_invalid_publish_entry_attr_none_is_skipped(self):
+        """Verify line 357: entry with attr=None is skipped gracefully."""
+        # attr is None → _parse_publish_entry returns {'attr': None, ...}
+        # → 'if not attr: continue' must be hit
+        item_data = r"type: functional" + "\n" r"text: |" + "\n" r"  Some text."
+        document, item = self._make_item(YAML_INVALID_PUBLISH_ENTRY, item_data)
+        # Must not raise, must not produce attribute table
+        result = getLines(publisher.publish_lines(document, ".md"))
+        self.assertNotIn("| Attribute | Value |", result)
+
+    def test_structured_attribute_renders_as_link(self):
+        """Verify lines 375-376: list-of-dicts with fields renders via _render_fields()."""
+        item_data = (
+            r"type: functional" + "\n"
+            r"spec-refs-from:" + "\n"
+            r"  - file: specs/login.md" + "\n"
+            r"    section: '3.1 Login Process'" + "\n"
+            r"    anchor: 31-login-process" + "\n"
+            r"    url: https://gitlab.com/group/project/-/blob/main/specs/login.md#31-login-process"
+            + "\n"
+            r"text: |" + "\n"
+            r"  Some text."
+        )
+        document, item = self._make_item(YAML_STRUCTURED_ATTRIBUTES, item_data)
+        result = getLines(publisher.publish_lines(document, ".md"))
+        # Table header present
+        self.assertIn("| Attribute | Value |", result)
+        # Rendered as Markdown link via _render_fields()
+        self.assertIn(
+            "| spec-refs-from | [3.1 Login Process](https://gitlab.com/group/project/-/blob/main/specs/login.md#31-login-process) |",
+            result,
+        )
+        # Must NOT contain raw dict dump
+        self.assertNotIn("'file'", result)
+
+    def test_structured_attribute_multiple_entries_joined_with_br(self):
+        """Verify lines 375-376: multiple list-of-dicts entries joined with <br>."""
+        item_data = (
+            r"type: functional" + "\n"
+            r"spec-refs-from:" + "\n"
+            r"  - file: specs/login.md" + "\n"
+            r"    section: '3.1 Login Process'" + "\n"
+            r"    anchor: 31-login-process" + "\n"
+            r"    url: https://gitlab.com/group/project/-/blob/main/specs/login.md#31-login-process"
+            + "\n"
+            r"  - file: specs/session.md" + "\n"
+            r"    section: '3.2 Session Management'" + "\n"
+            r"    anchor: 32-session-management" + "\n"
+            r"    url: https://gitlab.com/group/project/-/blob/main/specs/session.md#32-session-management"
+            + "\n"
+            r"text: |" + "\n"
+            r"  Some text."
+        )
+        document, item = self._make_item(YAML_STRUCTURED_ATTRIBUTES, item_data)
+        result = getLines(publisher.publish_lines(document, ".md"))
+        self.assertIn("<br>", result)
+        self.assertIn("3.1 Login Process", result)
+        self.assertIn("3.2 Session Management", result)
+
+    def test_list_attribute_joined_with_br(self):
+        """Verify line 381: plain list attribute joined with <br>."""
+        item_data = (
+            r"verification-method:" + "\n"
+            r"  - system test" + "\n"
+            r"  - analysis" + "\n"
+            r"text: |" + "\n"
+            r"  Some text."
+        )
+        document, item = self._make_item(YAML_LIST_ATTRIBUTE, item_data)
+        result = getLines(publisher.publish_lines(document, ".md"))
+        self.assertIn("| Attribute | Value |", result)
+        self.assertIn("| verification-method | system test<br>analysis |", result)
+
+    def test_empty_attribute_value_skipped(self):
+        """Verify 'if not value: continue' - empty attribute produces no table."""
+        item_data = (
+            r"type: ''" + "\n"  # empty string → falsy
+            r"text: |" + "\n"
+            r"  Some text."
+        )
+        document, item = self._make_item(YAML_STRUCTURED_ATTRIBUTES, item_data)
+        result = getLines(publisher.publish_lines(document, ".md"))
+        self.assertNotIn("| Attribute | Value |", result)

@@ -257,6 +257,44 @@ class MarkdownPublisher(BasePublisher):
             result = standard + attr_list
         return result
 
+    @staticmethod
+    def _parse_publish_entry(entry):
+        """Parse a publish entry from .doorstop.yml.
+
+        Backward compatible:
+          - str  → {'attr': entry, 'fields': None}
+          - dict → {'attr': ..., 'fields': ...}
+        """
+        if isinstance(entry, str):
+            return {"attr": entry, "fields": None}
+        elif isinstance(entry, dict):
+            return {
+                "attr": entry.get("attr"),
+                "fields": entry.get("fields", None),
+            }
+        return None
+
+    @staticmethod
+    def _render_fields(refs: list, fields: list) -> str:
+        results = []
+        for ref in refs:
+            parts = []
+            for field_entry in fields:
+                if isinstance(field_entry, dict):
+                    for url_key, label_key in field_entry.items():
+                        url = ref.get(
+                            url_key, ""
+                        ).strip()  # strip \n from YAML literal block
+                        label = ref.get(label_key, url_key).strip()
+                        if url:
+                            parts.append(f"[{label}]({url})")
+                        else:
+                            parts.append(label)
+                elif isinstance(field_entry, str):
+                    parts.append(str(ref.get(field_entry, "")).strip())
+            results.append(" ".join(parts))
+        return "<br>".join(results)  # new table row per ref entry
+
     def _lines_markdown(self, obj, **kwargs):
         """Yield lines for a Markdown report.
 
@@ -269,7 +307,7 @@ class MarkdownPublisher(BasePublisher):
         linkify = kwargs.get("linkify", False)
         to_html = kwargs.get("to_html", False)
         for item in iter_items(obj):
-            # Create iten heading.
+            # Create item heading.
             complete_heading = self._generate_heading_from_item(item, to_html=to_html)
             yield complete_heading
 
@@ -313,17 +351,44 @@ class MarkdownPublisher(BasePublisher):
             # Add custom publish attributes
             if item.document and item.document.publish:
                 header_printed = False
-                for attr in item.document.publish:
-                    if not item.attribute(attr):
+                for entry in item.document.publish:
+                    parsed = self._parse_publish_entry(entry)
+                    attr = parsed.get("attr") if parsed else None
+                    fields = parsed.get("fields") if parsed else None
+                    if not attr:  # catches None AND missing 'attr'
                         continue
+
+                    value = item.attribute(attr)
+                    if not value:
+                        continue
+
                     if not header_printed:
                         header_printed = True
                         yield ""
                         yield "| Attribute | Value |"
                         yield "| --------- | ----- |"
-                    yield "| {} | {} |".format(attr, item.attribute(attr))
-                yield ""
 
+                    # Sub-Attribute-Selection: fields given and value is a list of dicts
+                    if (
+                        fields
+                        and isinstance(fields, list)
+                        and isinstance(value, list)
+                        and value
+                        and isinstance(value[0], dict)
+                    ):
+                        rendered = self._render_fields(value, fields)
+                        yield "| {} | {} |".format(attr, rendered)
+
+                    # Fallback: standard case (backward compatible)
+                    else:
+                        if isinstance(value, list):
+                            yield "| {} | {} |".format(
+                                attr, "<br>".join(str(v) for v in value)
+                            )
+                        else:
+                            yield "| {} | {} |".format(attr, value)
+                if header_printed:
+                    yield ""
             yield ""  # break between items
 
 
