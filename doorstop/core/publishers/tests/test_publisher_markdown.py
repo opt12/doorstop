@@ -17,6 +17,7 @@ from doorstop.core.publishers.tests.helpers import (
     YAML_INVALID_PUBLISH_ENTRY,
     YAML_LIST_ATTRIBUTE,
     YAML_STRUCTURED_ATTRIBUTES,
+    YAML_COMBINED_LABEL_ATTRIBUTES,
     getLines,
 )
 from doorstop.core.tests import (
@@ -454,6 +455,120 @@ class TestRenderFields(unittest.TestCase):
         result = MarkdownPublisher._render_fields(self.refs[:1], fields)
         self.assertEqual(result, "3.1 Login Process 31-login-process")
 
+    def test_combined_label_default_separator(self):
+        """Combined label with default separator ': '."""
+        refs = [
+            {
+                "file": "System_Safety_Concept.md",
+                "section": "Stop Functions",
+                "url": "https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions",
+            }
+        ]
+        fields = [{"url": {"label": ["file", "section"], "separator": ": "}}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(
+            result,
+            "[System_Safety_Concept.md: Stop Functions](https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions)",
+        )
+
+    def test_combined_label_custom_separator(self):
+        """Combined label with custom separator ' § '."""
+        refs = [
+            {
+                "section": "Stop Functions",
+                "anchor": "stop-functions",
+                "url": "https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions",
+            }
+        ]
+        fields = [{"url": {"label": ["section", "anchor"], "separator": " § "}}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(
+            result,
+            "[Stop Functions § stop-functions](https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions)",
+        )
+
+    def test_combined_label_missing_field_skipped(self):
+        """Missing field in combined label is skipped gracefully."""
+        refs = [
+            {
+                "section": "Stop Functions",
+                "url": "https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions",
+            }
+        ]
+        # 'file' fehlt – nur 'section' soll im Label erscheinen
+        fields = [{"url": {"label": ["file", "section"], "separator": ": "}}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(
+            result,
+            "[Stop Functions](https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions)",
+        )
+
+    def test_combined_label_single_field_in_list(self):
+        """Single field in label list behaves like simple label."""
+        refs = [
+            {
+                "section": "Stop Functions",
+                "url": "https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions",
+            }
+        ]
+        fields = [{"url": {"label": ["section"], "separator": ": "}}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(
+            result,
+            "[Stop Functions](https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions)",
+        )
+
+    def test_combined_label_no_url_renders_text_only(self):
+        """Combined label without URL renders plain text."""
+        refs = [
+            {
+                "file": "System_Safety_Concept.md",
+                "section": "Stop Functions",
+            }
+        ]
+        fields = [{"url": {"label": ["file", "section"], "separator": ": "}}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(result, "System_Safety_Concept.md: Stop Functions")
+
+    def test_combined_label_multiple_refs_joined_with_br(self):
+        """Multiple refs with combined labels are joined with <br>."""
+        fields = [{"url": {"label": ["file", "section"], "separator": ": "}}]
+        result = MarkdownPublisher._render_fields(self.refs, fields)
+        parts = result.split("<br>")
+        self.assertEqual(len(parts), 2)
+        self.assertIn("specs/login.md: 3.1 Login Process", parts[0])
+        self.assertIn("specs/session.md: 3.2 Session Management", parts[1])
+
+    def test_label_spec_invalid_type_uses_url_key(self):
+        """label_spec neither str nor dict → label falls back to url_key."""
+        refs = [
+            {
+                "url": "https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions",
+            }
+        ]
+        # label_spec is an int – neither str nor dict → else branch → label = url_key
+        fields = [{"url": 42}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        self.assertEqual(
+            result,
+            "[url](https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions)",
+        )
+
+    def test_combined_label_no_url_appends_label_without_link(self):
+        """url empty with combined label → plain text, no link tag."""
+        refs = [
+            {
+                "file": "System_Safety_Concept.md",
+                "section": "Stop Functions",
+                # url intentionally missing → empty string after .get()
+            }
+        ]
+        fields = [{"url": {"label": ["file", "section"], "separator": ": "}}]
+        result = MarkdownPublisher._render_fields(refs, fields)
+        # No link – only combined label text
+        self.assertEqual(result, "System_Safety_Concept.md: Stop Functions")
+        self.assertNotIn("](", result)
+
 
 class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
     """Integration tests for modified _lines_markdown() custom attribute handling."""
@@ -471,7 +586,7 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
         return document, item
 
     def test_invalid_publish_entry_attr_none_is_skipped(self):
-        """Verify line 357: entry with attr=None is skipped gracefully."""
+        """entry with attr=None is skipped gracefully."""
         # attr is None → _parse_publish_entry returns {'attr': None, ...}
         # → 'if not attr: continue' must be hit
         item_data = r"type: functional" + "\n" r"text: |" + "\n" r"  Some text."
@@ -481,7 +596,7 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
         self.assertNotIn("| Attribute | Value |", result)
 
     def test_structured_attribute_renders_as_link(self):
-        """Verify lines 375-376: list-of-dicts with fields renders via _render_fields()."""
+        """list-of-dicts with fields renders via _render_fields()."""
         item_data = (
             r"type: functional" + "\n"
             r"spec-refs-from:" + "\n"
@@ -506,7 +621,7 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
         self.assertNotIn("'file'", result)
 
     def test_structured_attribute_multiple_entries_joined_with_br(self):
-        """Verify lines 375-376: multiple list-of-dicts entries joined with <br>."""
+        """multiple list-of-dicts entries joined with <br>."""
         item_data = (
             r"type: functional" + "\n"
             r"spec-refs-from:" + "\n"
@@ -530,7 +645,7 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
         self.assertIn("3.2 Session Management", result)
 
     def test_list_attribute_joined_with_br(self):
-        """Verify line 381: plain list attribute joined with <br>."""
+        """plain list attribute joined with <br>."""
         item_data = (
             r"verification-method:" + "\n"
             r"  - system test" + "\n"
@@ -553,3 +668,43 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
         document, item = self._make_item(YAML_STRUCTURED_ATTRIBUTES, item_data)
         result = getLines(publisher.publish_lines(document, ".md"))
         self.assertNotIn("| Attribute | Value |", result)
+
+    def test_structured_attribute_combined_label_renders_as_link(self):
+        """Verify combined label {label: [...]} renders correctly."""
+        item_data = (
+            r"spec-refs-from:" + "\n"
+            r"  - file: System_Safety_Concept.md" + "\n"
+            r"    section: 'Stop Functions'" + "\n"
+            r"    anchor: stop-functions" + "\n"
+            r"    url: https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions" + "\n"
+            r"text: |" + "\n"
+            r"  Some text."
+        )
+        document, item = self._make_item(YAML_COMBINED_LABEL_ATTRIBUTES, item_data)
+        result = getLines(publisher.publish_lines(document, ".md"))
+        self.assertIn("| Attribute | Value |", result)
+        # Combined label: file + ": " + section
+        self.assertIn(
+            "[System_Safety_Concept.md: Stop Functions]"
+            "(https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions)",
+            result,
+        )
+
+    def test_structured_attribute_no_url_renders_label_only(self):
+        """Verify missing url → label appended without link tag."""
+        item_data = (
+            r"spec-refs-from:" + "\n"
+            r"  - file: System_Safety_Concept.md" + "\n"
+            r"    section: 'Stop Functions'" + "\n"
+            r"    anchor: stop-functions" + "\n"
+            # url intentionally missing
+            r"text: |" + "\n"
+            r"  Some text."
+        )
+        document, item = self._make_item(YAML_COMBINED_LABEL_ATTRIBUTES, item_data)
+        result = getLines(publisher.publish_lines(document, ".md"))
+        self.assertIn("| Attribute | Value |", result)
+        # No link – only label text
+        self.assertIn("System_Safety_Concept.md: Stop Functions", result)
+        self.assertNotIn("href", result)
+        self.assertNotIn("](", result)
