@@ -51,7 +51,7 @@ markdown = "^3.3.3"
 bottle = "~0.13.4"
 requests = "^2.0"
 python-frontmatter = "^1.0"
-python-markdown-math = "~0.6"
+python-markdown-math = ">=0.6,<0.10"
 plantuml-markdown = "^3.4.2"
 six = "*" # fixes https://github.com/dougn/python-plantuml/issues/11
 openpyxl = ">=3.1.2"
@@ -61,7 +61,7 @@ verchew = "^3.4.2"
 
 # Formatters
 black = ">=24.3,<27.0"
-isort = "^5.12"
+isort = ">=5.12,<9.0"
 
 # Linters
 mypy = ">=1.1.1"
@@ -73,7 +73,7 @@ types-requests = "*"
 types-setuptools = "*"
 
 # Testing
-pytest = "^8.4"
+pytest = ">=8.4,<10.0"
 pytest-cov = "*"
 pytest-expecter = "*"
 pytest-sugar = "*"

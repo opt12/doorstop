@@ -14,6 +14,7 @@ from unittest.mock import ANY, MagicMock, Mock, call, patch
 
 from doorstop.core import publisher
 from doorstop.core.document import Document
+from doorstop.core.publishers.html import HtmlPublisher
 from doorstop.core.template import HTMLTEMPLATE
 from doorstop.core.tests import (
     EMPTY,
