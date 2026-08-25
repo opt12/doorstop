@@ -531,11 +531,36 @@ attributes:
         - url: section
 ```
 
-The `fields` list supports two entry formats:
+The `fields` list supports three entry formats:
 
-| Format                 | Example        | Result                                             |
-| ---------------------- | -------------- | -------------------------------------------------- |
-| `{url_key: label_key}` | `url: section` | `[section value](url value)` rendered as hyperlink |
-| `fieldname`            | `section`      | plain text value of that sub-attribute             |
+| Format                                      | Example        | Result                                 |
+| ------------------------------------------- | -------------- | -------------------------------------- |
+| `{url_key: label_key}`                      | `url: section` | single field as link text              |
+| `{url_key: {label: [...], separator: ...}}` | see below      | multiple fields combined as link text  |
+| `fieldname`                                 | `section`      | plain text value of that sub-attribute |
+
+**Simple label (single field):**
+```yaml
+attributes:
+  publish:
+    - attr: spec-refs-from
+      fields:
+        - url: section
+# → [Stop Functions](https://...)
+```
+
+**Combined label (multiple fields):**
+```yaml
+attributes:
+  publish:
+    - attr: spec-refs-from
+      fields:
+        - url:
+            label: [file, section]
+            separator: ": "
+# → [System_Safety_Concept: Stop Functions](https://...)
+```
+
+The `label` key accepts a list of sub-attribute names. The `separator` key is optional and defaults to `": "` if omitted.
 
 Multiple entries in the structured attribute list are separated by `<br>` in the published output.

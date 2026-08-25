@@ -61,6 +61,20 @@ attributes:
     - attr: ~
 """
 
+YAML_COMBINED_LABEL_ATTRIBUTES = """\
+settings:
+  digits: 3
+  prefix: REQ
+  sep: ''
+attributes:
+  publish:
+    - attr: spec-refs-from
+      fields:
+        - url:
+            label: [file, section]
+            separator: ": "
+"""
+
 HTML_TEMPLATE_WALK = """
     template/
         bootstrap.bundle.min.js

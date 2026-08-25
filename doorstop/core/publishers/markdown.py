@@ -281,19 +281,41 @@ class MarkdownPublisher(BasePublisher):
             parts = []
             for field_entry in fields:
                 if isinstance(field_entry, dict):
-                    for url_key, label_key in field_entry.items():
-                        url = ref.get(
-                            url_key, ""
-                        ).strip()  # strip \n from YAML literal block
-                        label = ref.get(label_key, url_key).strip()
+                    for url_key, label_spec in field_entry.items():
+                        url = ref.get(url_key, '').strip()
+
+                        # label_spec may be one of:
+                        # - str:  label: section          → single field
+                        # - dict: label: [file, section]  → combined label
+                        if isinstance(label_spec, str):
+                            # single field
+                            label = ref.get(label_spec, url_key).strip()
+                        elif isinstance(label_spec, dict):
+                            # combined label
+                            label_fields = label_spec.get('label', [])
+                            separator = label_spec.get('separator', ': ')
+                            if isinstance(label_fields, str):
+                                label_fields = [label_fields]
+                            label = separator.join(
+                                str(ref.get(f, '')).strip()
+                                for f in label_fields
+                                if ref.get(f, '').strip()
+                            )
+                            if not label:
+                                label = url_key
+                        else:
+                            label = url_key
+
                         if url:
                             parts.append(f"[{label}]({url})")
                         else:
                             parts.append(label)
+
                 elif isinstance(field_entry, str):
-                    parts.append(str(ref.get(field_entry, "")).strip())
+                    parts.append(str(ref.get(field_entry, '')).strip())
+
             results.append(" ".join(parts))
-        return "<br>".join(results)  # new table row per ref entry
+        return "<br>".join(results)
 
     def _lines_markdown(self, obj, **kwargs):
         """Yield lines for a Markdown report.
