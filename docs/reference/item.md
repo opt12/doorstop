@@ -517,18 +517,18 @@ verification-method:
 
 When an extended attribute contains a **list of dictionaries** (a structured attribute), you can select specific sub-attributes for publishing instead of rendering the raw object.
 
-Use the extended `publish` entry format with `attr` and `fields` keys:
+Use the attribute name directly as key with a `fields` configuration:
 
 ```yaml
 attributes:
   publish:
     - invented-by           # simple attribute – unchanged behavior
-    - attr: spec-refs-from  # structured attribute – select sub-attributes
-      fields:
-        - url: section      # {url_key: label_key} → renders as a hyperlink
-    - attr: spec-refs-to
-      fields:
-        - url: section
+    - spec-refs-from:       # structured attribute – select sub-attributes
+        fields:
+          - url: section    # {url_key: label_key} → renders as a hyperlink
+    - spec-refs-to:
+        fields:
+          - url: section
 ```
 
 The `fields` list supports three entry formats:
@@ -543,9 +543,9 @@ The `fields` list supports three entry formats:
 ```yaml
 attributes:
   publish:
-    - attr: spec-refs-from
-      fields:
-        - url: section
+    - spec-refs-from:
+        fields:
+          - url: section
 # → [Stop Functions](https://...)
 ```
 
@@ -553,11 +553,11 @@ attributes:
 ```yaml
 attributes:
   publish:
-    - attr: spec-refs-from
-      fields:
-        - url:
-            label: [file, section]
-            separator: ": "
+    - spec-refs-from:
+        fields:
+          - url:
+              label: [file, section]
+              separator: ": "
 # → [System_Safety_Concept: Stop Functions](https://...)
 ```
 

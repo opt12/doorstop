@@ -262,16 +262,19 @@ class MarkdownPublisher(BasePublisher):
         """Parse a publish entry from .doorstop.yml.
 
         Backward compatible:
-          - str  → {'attr': entry, 'fields': None}
-          - dict → {'attr': ..., 'fields': ...}
+        - str  → {'attr': entry, 'fields': None}
+        - dict with single key → {'attr': key, 'fields': config.get('fields')}
         """
         if isinstance(entry, str):
             return {"attr": entry, "fields": None}
         elif isinstance(entry, dict):
-            return {
-                "attr": entry.get("attr"),
-                "fields": entry.get("fields", None),
-            }
+            if len(entry) == 1:
+                attr = next(iter(entry))
+                config = entry[attr]
+                if isinstance(config, dict):
+                    return {"attr": attr, "fields": config.get("fields", None)}
+                else:
+                    return {"attr": attr, "fields": None}
         return None
 
     @staticmethod
