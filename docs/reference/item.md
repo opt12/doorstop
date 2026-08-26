@@ -487,7 +487,7 @@ Introduced in v2.2, Doorstop can include extended attributes in published output
 
 Edit the document configuration file `.doorstop.yml` by hand to include the desired attributes.
 
-For example, to include the `invented-by` extended attribute key and value in the published output:
+For example, to include the `invented-by` extended attribute in the published output:
 
 ```yaml
 settings:
@@ -498,3 +498,69 @@ attributes:
   publish:
     - invented-by
 ```
+
+For simple scalar attributes (strings, numbers), the value is rendered directly in the output table.
+
+For list attributes, the values are joined with `<br>` as separator:
+
+```yaml
+# Item attribute:
+verification-method:
+  - system test
+  - analysis
+
+# Rendered as:
+# | verification-method | system test<br>analysis |
+```
+
+### Publishing sub-attributes of structured attributes
+
+When an extended attribute contains a **list of dictionaries** (a structured attribute), you can select specific sub-attributes for publishing instead of rendering the raw object.
+
+Use the attribute name directly as key with a `fields` configuration:
+
+```yaml
+attributes:
+  publish:
+    - invented-by           # simple attribute – unchanged behavior
+    - spec-refs-from:       # structured attribute – select sub-attributes
+        fields:
+          - url: section    # {url_key: label_key} → renders as a hyperlink
+    - spec-refs-to:
+        fields:
+          - url: section
+```
+
+The `fields` list supports three entry formats:
+
+| Format                                      | Example        | Result                                 |
+| ------------------------------------------- | -------------- | -------------------------------------- |
+| `{url_key: label_key}`                      | `url: section` | single field as link text              |
+| `{url_key: {label: [...], separator: ...}}` | see below      | multiple fields combined as link text  |
+| `fieldname`                                 | `section`      | plain text value of that sub-attribute |
+
+**Simple label (single field):**
+```yaml
+attributes:
+  publish:
+    - spec-refs-from:
+        fields:
+          - url: section
+# → [Stop Functions](https://...)
+```
+
+**Combined label (multiple fields):**
+```yaml
+attributes:
+  publish:
+    - spec-refs-from:
+        fields:
+          - url:
+              label: [file, section]
+              separator: ": "
+# → [System_Safety_Concept: Stop Functions](https://...)
+```
+
+The `label` key accepts a list of sub-attribute names. The `separator` key is optional and defaults to `": "` if omitted.
+
+Multiple entries in the structured attribute list are separated by `<br>` in the published output.

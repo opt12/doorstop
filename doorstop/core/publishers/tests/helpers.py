@@ -15,6 +15,7 @@ outline:
         - REQ002: # Hello, world! !["...
         - REQ2-001: # Hello, world!
 """
+
 YAML_CUSTOM_ATTRIBUTES = """
 settings:
   digits: 3
@@ -26,6 +27,65 @@ attributes:
     - CUSTOM-ATTRIB
     - invented-by
 """
+
+YAML_STRUCTURED_ATTRIBUTES = """\
+settings:
+  digits: 3
+  prefix: REQ
+  sep: ''
+attributes:
+  publish:
+    - type
+    - verification-method
+    - spec-refs-from:
+        fields:
+          - url: section
+"""
+
+YAML_LIST_ATTRIBUTE = """\
+settings:
+  digits: 3
+  prefix: REQ
+  sep: ''
+attributes:
+  publish:
+    - verification-method
+"""
+
+YAML_INVALID_PUBLISH_ENTRY = """\
+settings:
+  digits: 3
+  prefix: REQ
+  sep: ''
+attributes:
+  publish:
+    - ~
+"""
+
+YAML_COMBINED_LABEL_ATTRIBUTES = """\
+settings:
+  digits: 3
+  prefix: REQ
+  sep: ''
+attributes:
+  publish:
+    - spec-refs-from:
+        fields:
+          - url:
+              label: [file, section]
+              separator: ": "
+"""
+
+YAML_SINGLE_ATTRIBUTE = """\
+settings:
+  digits: 3
+  prefix: REQ
+  sep: ''
+attributes:
+  publish:
+    - type
+"""
+
 HTML_TEMPLATE_WALK = """
     template/
         bootstrap.bundle.min.js
