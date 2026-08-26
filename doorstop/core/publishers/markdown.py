@@ -285,7 +285,7 @@ class MarkdownPublisher(BasePublisher):
             for field_entry in fields:
                 if isinstance(field_entry, dict):
                     for url_key, label_spec in field_entry.items():
-                        url = ref.get(url_key, '').strip()
+                        url = ref.get(url_key, "").strip()
 
                         # label_spec may be one of:
                         # - str:  label: section          → single field
@@ -295,14 +295,14 @@ class MarkdownPublisher(BasePublisher):
                             label = ref.get(label_spec, url_key).strip()
                         elif isinstance(label_spec, dict):
                             # combined label
-                            label_fields = label_spec.get('label', [])
-                            separator = label_spec.get('separator', ': ')
+                            label_fields = label_spec.get("label", [])
+                            separator = label_spec.get("separator", ": ")
                             if isinstance(label_fields, str):
                                 label_fields = [label_fields]
                             label = separator.join(
-                                str(ref.get(f, '')).strip()
+                                str(ref.get(f, "")).strip()
                                 for f in label_fields
-                                if ref.get(f, '').strip()
+                                if ref.get(f, "").strip()
                             )
                             if not label:
                                 label = url_key
@@ -315,7 +315,7 @@ class MarkdownPublisher(BasePublisher):
                             parts.append(label)
 
                 elif isinstance(field_entry, str):
-                    parts.append(str(ref.get(field_entry, '')).strip())
+                    parts.append(str(ref.get(field_entry, "")).strip())
 
             results.append(" ".join(parts))
         return "<br>".join(results)
