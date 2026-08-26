@@ -15,6 +15,7 @@ outline:
         - REQ002: # Hello, world! !["...
         - REQ2-001: # Hello, world!
 """
+
 YAML_CUSTOM_ATTRIBUTES = """
 settings:
   digits: 3
@@ -36,9 +37,9 @@ attributes:
   publish:
     - type
     - verification-method
-    - attr: spec-refs-from
-      fields:
-        - url: section
+    - spec-refs-from:
+        fields:
+          - url: section
 """
 
 YAML_LIST_ATTRIBUTE = """\
@@ -58,7 +59,7 @@ settings:
   sep: ''
 attributes:
   publish:
-    - attr: ~
+    - ~
 """
 
 YAML_COMBINED_LABEL_ATTRIBUTES = """\
@@ -68,11 +69,21 @@ settings:
   sep: ''
 attributes:
   publish:
-    - attr: spec-refs-from
-      fields:
-        - url:
-            label: [file, section]
-            separator: ": "
+    - spec-refs-from:
+        fields:
+          - url:
+              label: [file, section]
+              separator: ": "
+"""
+
+YAML_SINGLE_ATTRIBUTE = """\
+settings:
+  digits: 3
+  prefix: REQ
+  sep: ''
+attributes:
+  publish:
+    - type
 """
 
 HTML_TEMPLATE_WALK = """

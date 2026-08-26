@@ -16,6 +16,7 @@ from doorstop.core.publishers.tests.helpers import (
     YAML_CUSTOM_ATTRIBUTES,
     YAML_INVALID_PUBLISH_ENTRY,
     YAML_LIST_ATTRIBUTE,
+    YAML_SINGLE_ATTRIBUTE,
     YAML_STRUCTURED_ATTRIBUTES,
     YAML_COMBINED_LABEL_ATTRIBUTES,
     getLines,
@@ -347,8 +348,8 @@ class TestParsePublishEntry(unittest.TestCase):
         self.assertEqual(result, {"attr": "invented-by", "fields": None})
 
     def test_dict_entry_with_fields(self):
-        """Dict entry with attr and fields is parsed correctly."""
-        entry = {"attr": "spec-refs-from", "fields": [{"url": "section"}]}
+        """Dict entry with attribute name as key and fields is parsed correctly."""
+        entry = {"spec-refs-from": {"fields": [{"url": "section"}]}}
         result = MarkdownPublisher._parse_publish_entry(entry)
         self.assertEqual(
             result, {"attr": "spec-refs-from", "fields": [{"url": "section"}]}
@@ -356,15 +357,15 @@ class TestParsePublishEntry(unittest.TestCase):
 
     def test_dict_entry_without_fields(self):
         """Dict entry without fields returns fields=None."""
-        entry = {"attr": "spec-refs-from"}
+        entry = {"spec-refs-from": {}}
         result = MarkdownPublisher._parse_publish_entry(entry)
         self.assertEqual(result, {"attr": "spec-refs-from", "fields": None})
 
     def test_dict_entry_missing_attr(self):
-        """Dict entry without attr key returns attr=None."""
-        entry = {"fields": [{"url": "section"}]}
+        """Dict entry with None config returns fields=None."""
+        entry = {"spec-refs-from": None}
         result = MarkdownPublisher._parse_publish_entry(entry)
-        self.assertIsNone(result["attr"])
+        self.assertEqual(result, {"attr": "spec-refs-from", "fields": None})
 
     def test_invalid_entry_returns_none(self):
         """Non-string, non-dict entry returns None."""
@@ -661,11 +662,11 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
     def test_empty_attribute_value_skipped(self):
         """Verify 'if not value: continue' - empty attribute produces no table."""
         item_data = (
-            r"type: ''" + "\n"  # empty string → falsy
+            r"type: ''" + "\n"
             r"text: |" + "\n"
             r"  Some text."
         )
-        document, item = self._make_item(YAML_STRUCTURED_ATTRIBUTES, item_data)
+        document, item = self._make_item(YAML_SINGLE_ATTRIBUTE, item_data)
         result = getLines(publisher.publish_lines(document, ".md"))
         self.assertNotIn("| Attribute | Value |", result)
 
