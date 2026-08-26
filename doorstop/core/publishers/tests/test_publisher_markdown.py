@@ -13,12 +13,12 @@ from unittest.mock import MagicMock, Mock, patch
 from doorstop.core import publisher
 from doorstop.core.publishers.markdown import MarkdownPublisher
 from doorstop.core.publishers.tests.helpers import (
+    YAML_COMBINED_LABEL_ATTRIBUTES,
     YAML_CUSTOM_ATTRIBUTES,
     YAML_INVALID_PUBLISH_ENTRY,
     YAML_LIST_ATTRIBUTE,
     YAML_SINGLE_ATTRIBUTE,
     YAML_STRUCTURED_ATTRIBUTES,
-    YAML_COMBINED_LABEL_ATTRIBUTES,
     getLines,
 )
 from doorstop.core.tests import (
@@ -661,11 +661,7 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
 
     def test_empty_attribute_value_skipped(self):
         """Verify 'if not value: continue' - empty attribute produces no table."""
-        item_data = (
-            r"type: ''" + "\n"
-            r"text: |" + "\n"
-            r"  Some text."
-        )
+        item_data = r"type: ''" + "\n" r"text: |" + "\n" r"  Some text."
         document, item = self._make_item(YAML_SINGLE_ATTRIBUTE, item_data)
         result = getLines(publisher.publish_lines(document, ".md"))
         self.assertNotIn("| Attribute | Value |", result)
@@ -677,7 +673,8 @@ class TestPublishLinesCustomAttributesExtended(unittest.TestCase):
             r"  - file: System_Safety_Concept.md" + "\n"
             r"    section: 'Stop Functions'" + "\n"
             r"    anchor: stop-functions" + "\n"
-            r"    url: https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions" + "\n"
+            r"    url: https://gitlab.com/group/project/-/blob/main/specs/safety.md#stop-functions"
+            + "\n"
             r"text: |" + "\n"
             r"  Some text."
         )
