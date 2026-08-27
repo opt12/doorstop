@@ -70,7 +70,7 @@ configuration.
 # Add Items with a Name in the UID
 
 By default, new items get a number assigned by Doorstop for their UID together
-with the document prefix and separator.  Doorstop allows you to specifiy an
+with the document prefix and separator.  Doorstop allows you to specify an
 explicit number or a name for the item UID.  Names can be only used if the
 document was created with a separator.  Names cannot contain separators.
 Allowed separators are '-', '\_', and '.'.
